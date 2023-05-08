@@ -2,8 +2,8 @@
 // Created by S3 on 23.04.2023.
 //
 #include <gtest/gtest.h>
+#include <random>
 #include "bch_codes.h"
-
 
 //Нас интересуют только GF(2^m)
 //Элементы этого поля задаются, как вектора над полем GF(2), т.е. двоичные представления int
@@ -28,7 +28,59 @@
 //(1001) = alpha^14 = (11010) + (10011)
 //(0001) = alpha^15 = (10010) + (10011)
 
-TEST(default_operation, getElement) {
+//Генерация случайных чисел
+std::mt19937 rng(std::chrono::steady_clock::now().time_since_epoch().count());
+int rnd(int l, int r) {
+    std::uniform_int_distribution<int> range(l, r);
+    return range(rng);
+}
+
+std::random_device rd;
+std::mt19937 e2(rd());
+
+
+void vector_equals(std::vector<int> const &a, std::vector<int> const &b) {
+    EXPECT_EQ(a.size(), b.size());
+    for (int i = 0; i < a.size(); ++i) {
+        EXPECT_EQ(a[i], b[i]);
+    }
+}
+
+std::vector<int> intToBinary(int number) {
+    std::vector<int> binary_representation;
+    while (number > 0) {
+        binary_representation.push_back(number % 2);
+        number /= 2;
+    }
+
+    return binary_representation;
+}
+void test_bch_code(bch_code& bchCode, int errors, int iterations) {
+    int random_word = rnd(0, (1 << bchCode.k) - 1);
+    auto information_word = intToBinary(random_word);
+    information_word.resize(bchCode.k, 0);
+    auto coded_word = bchCode.code_word(information_word);
+    for (int j = 0; j < iterations; ++j) {
+        auto copy(coded_word);
+        for (int i = 0; i < errors; ++i) {
+            int x = rnd(0, bchCode.n - 1);
+            bch_code::invert_symbol(copy, x);
+        }
+        auto fixed_word = bchCode.fix_errors(copy);
+        vector_equals(fixed_word, coded_word);
+    }
+}
+
+
+
+void printVector(std::vector<int> &vector) {
+    for (auto t: vector) {
+        std::cout << t;
+    }
+    std::cout << '\n';
+}
+
+TEST(galois_field, getElement) {
     galois_field GF(19);
     EXPECT_EQ(14, GF.getElement(11));
     EXPECT_EQ(1, GF.getElement(0));
@@ -38,7 +90,7 @@ TEST(default_operation, getElement) {
     EXPECT_EQ(GF.getElement(5), GF.getElement(-25));
 }
 
-TEST(default_operation, getLog) {
+TEST(galois_field, getLog) {
     galois_field GF(19);
     EXPECT_EQ(11, GF.getLog(14));
     EXPECT_EQ(0, GF.getLog(1));
@@ -48,7 +100,7 @@ TEST(default_operation, getLog) {
 
 }
 
-TEST(default_operation, sum) {
+TEST(galois_field, sum) {
     galois_field GF(19);
     EXPECT_EQ(1, GF.sum_elements(0, 1));
     EXPECT_EQ(7, GF.sum_elements(11, 12));
@@ -56,7 +108,7 @@ TEST(default_operation, sum) {
 
 }
 
-TEST(default_operation, multiply) {
+TEST(galois_field, multiply) {
     galois_field GF(19);
     EXPECT_EQ(3, GF.multiply_elements(3, 1));
     EXPECT_EQ(6, GF.multiply_elements(3, 2));
@@ -67,7 +119,7 @@ TEST(default_operation, multiply) {
     EXPECT_EQ(0, GF.multiply_elements(0, GF.getElement(3)));
 }
 
-TEST(default_operation, simple_expression) {
+TEST(galois_field, simple_expression) {
     galois_field GF(19);
 
     EXPECT_EQ(GF.getElement(6), GF.multiply_elements(
@@ -82,6 +134,22 @@ TEST(default_operation, simple_expression) {
     ));
 }
 
+TEST(galois_field, creating_from_non_primitive) {
+    EXPECT_ANY_THROW(galois_field((1 << 5) - 1));
+}
+
+TEST(galois_field, generating_in_bch_codes) {
+    EXPECT_NO_THROW(bch_code bchCode1(63, 51, 2));
+    EXPECT_NO_THROW(bch_code bchCode2(63, 36, 5));
+    EXPECT_NO_THROW(bch_code bchCode3(63, 30, 6));
+    EXPECT_NO_THROW(bch_code bchCode4(63, 16, 11));
+    EXPECT_NO_THROW(bch_code bchCode5(127, 106, 3));
+}
+
+TEST(galois_field, generating_in_bch_codes_2) {
+    EXPECT_NO_THROW(bch_code bchCode1(23, 12, 7));
+}
+
 TEST(polynomial_operation, intToBinary) {
     int x = 19;
     auto result = intToBinary(x);
@@ -92,9 +160,10 @@ TEST(polynomial_operation, intToBinary) {
     EXPECT_EQ(result[4], 1);
 }
 
+
 TEST(polynomial_operation, shift) {
     int x = 19;
-    auto result = shiftLeft(intToBinary(x), 2);
+    auto result = bch_code::shiftLeft(intToBinary(x), 2);
     EXPECT_EQ(result[0], 0);
     EXPECT_EQ(result[1], 0);
     EXPECT_EQ(result[2], 1);
@@ -119,20 +188,13 @@ TEST(polynomial_operation, shrink) {
     EXPECT_EQ(result[5], 0);
     EXPECT_EQ(result[6], 0);
     EXPECT_EQ(result[7], 0);
-    result = shrink(result);
+    result = bch_code::shrink(result);
     EXPECT_EQ(result.size(), 5);
     EXPECT_EQ(result[0], 1);
     EXPECT_EQ(result[1], 1);
     EXPECT_EQ(result[2], 0);
     EXPECT_EQ(result[3], 0);
     EXPECT_EQ(result[4], 1);
-}
-
-
-TEST(polynomial_operation, multiply_polynomial) {
-    auto GF = galois_field(19);
-
-
 }
 
 TEST(generating_polynomial, check_count) {
@@ -167,109 +229,27 @@ TEST(generating_polynomial, check_count) {
     EXPECT_EQ(1, GF.getElement(90));
 }
 
-
-TEST(generating_polynomial, check_generating_polynomial) {
-//    auto GF = galois_field(19);
-    std::vector<int> answer{1, 1, 1, 0, 1, 0, 0, 0, 1};
-    std::reverse(answer.begin(), answer.end());
-//    int answer = 1 + 16 + 64 + 128 + 256;
-    std::vector<int> generated = get_generating_polynomial(15, 7, 5).first;
-//    std::cout << std::bitset<15>(generated);
-
-    EXPECT_EQ(answer.size(), generated.size());
-    for (int i = 0; i < answer.size(); ++i) {
-        EXPECT_EQ(answer[i], generated[i]);
-    }
-//    EXPECT_EQ(answer, generated);
+TEST(decoding, fix_0_error) {
+    bch_code bchCode(15, 7, 5);
+    test_bch_code(bchCode, 0, 100000);
 }
 
-TEST(generating_polynomial, check_generating_polynomial_2) {
-//    auto GF = galois_field(19);
-    std::vector<int> answer{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
-//    int answer = (1 << 15) - 1;
-    std::vector<int> generated = get_generating_polynomial(15, 7, 9).first;
-//    std::cout << std::bitset<15>(generated);
-
-    EXPECT_EQ(answer.size(), generated.size());
-    for (int i = 0; i < answer.size(); ++i) {
-        EXPECT_EQ(answer[i], generated[i]);
-    }
-//    EXPECT_EQ(answer, generated);
+TEST(decoding, fix_1_error) {
+    bch_code bchCode(15, 7, 5);
+    test_bch_code(bchCode, 1, 100000);
 }
 
-
-TEST(coding, coding_word) {
-    auto generated_pair = get_generating_polynomial(15, 7, 5);
-    std::vector<int> generated = generated_pair.first;
-//    std::vector<int> information_word{1, 1, 1, 1, 0, 0, 1};
-    auto information_word = intToBinary(25 + 32 + 64);
-    auto coded_word = code_word(generated_pair.second, information_word, generated, 15, 7);
-    auto expected_result = intToBinary((1 << 14) + (1 << 13) + (1 << 12) +
-                                       (1 << 11) + (1 << 8) + 64 + 32 + 8 + 2);
-//    printVector(expected_result);
-//    printVector(coded_word);
-    EXPECT_EQ(expected_result.size(), coded_word.size());
-    for (int i = 0; i < expected_result.size(); ++i) {
-        EXPECT_EQ(expected_result[i], coded_word[i]);
-    }
+TEST(decoding, fix_2_errors) {
+    bch_code bchCode(15, 7, 5);
+    test_bch_code(bchCode, 2, 100000);
 }
 
-TEST(decoding, syndrome_vector) {
-    auto generating_and_field = get_generating_polynomial(15, 7, 5);
-    std::vector<int> generated = generating_and_field.first;
-    galois_field GF = generating_and_field.second;
-    auto information_word = intToBinary(25 + 32 + 64);
-    auto information_word_2 = intToBinary(24 + 32 + 64);
-    auto coded_word = code_word(GF, information_word, generated, 15, 7);
-    auto coded_word_2 = code_word(GF, information_word, generated, 15, 7);
-    std::cout << "Coded word:\n";
-    printVector(coded_word);
-    if (coded_word[0] == 0) {
-        coded_word[0] = 1;
-    } else {
-        coded_word[0] = 0;
-    }
-    std::cout << "Corrupted_word:\n";
-    printVector(coded_word);
-    auto syndrome = get_syndrome_vector(GF, coded_word, 5);
-    std::cout << "Syndrome:\n";
-    for (int i: syndrome) {
-        std::cout << syndrome[i] << ' ';
-//        EXPECT_EQ(i, 0);
-    }
-}
-void corrupt_symbol(std::vector<int>& code, int index) {
-    if (code[index] == 0) {
-        code[index] = 1;
-    } else {
-        code[index] = 0;
-    }
+TEST(decoding, fix_3_errors) {
+    bch_code bchCode(23, 12, 7);
+    test_bch_code(bchCode, 3, 100000);
 }
 
-TEST(decoding, decoding_word) {
-    auto generating_and_field = get_generating_polynomial(15, 7, 5);
-    std::vector<int> generated = generating_and_field.first;
-    galois_field GF = generating_and_field.second;
-    auto information_word = intToBinary(25 + 32 + 64);
-    auto coded_word = code_word(GF, information_word, generated, 15, 7);
-
-    corrupt_symbol(coded_word, 6);
-    corrupt_symbol(coded_word, 3);
-
-
-    auto syndrome = get_syndrome_vector(GF, coded_word, 5);
-    auto locators = decoder_berlekamp_massey(GF, syndrome, 5);
-
-    auto roots = get_roots(GF, locators);
-    for (int & root : roots) {
-        root = GF.getLog(GF.getInverse(root));
-    }
-    std::sort(roots.begin(), roots.end());
-    EXPECT_EQ(roots.size(), 2);
-    EXPECT_EQ(3, roots[0]);
-    EXPECT_EQ(6, roots[1]);
+TEST(decoding, fix_5_errors) {
+    bch_code bchCode(63, 16, 11);
+    test_bch_code(bchCode, 5, 100000);
 }
-
-//TEST(bch_code, bch_code) {
-//    bch_code bchCode(15, 7, 5);
-//}
