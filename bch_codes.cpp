@@ -18,7 +18,8 @@ std::vector<int> bch_code::shrink(const std::vector<int> &a) {
     return result;
 }
 
-[[nodiscard]] std::vector<int> bch_code::multiply_polynomial(const std::vector<int> &P, const std::vector<int> &Q) const {
+[[nodiscard]] std::vector<int>
+bch_code::multiply_polynomial(const std::vector<int> &P, const std::vector<int> &Q) const {
     std::vector<int> ans(P.size() + Q.size() - 1);
     for (int i = 0; i < ans.size(); ++i) {
         int temp = 0;
@@ -30,7 +31,8 @@ std::vector<int> bch_code::shrink(const std::vector<int> &a) {
     return ans;
 }
 
-[[nodiscard]] std::vector<int> bch_code::summing_polynomial(const std::vector<int> &P, const std::vector<int> &Q) const {
+[[nodiscard]] std::vector<int>
+bch_code::summing_polynomial(const std::vector<int> &P, const std::vector<int> &Q) const {
     std::vector<int> ans(std::max(P.size(), Q.size()));
     for (int i = 0; i < ans.size(); ++i) {
         ans[i] = GF.sum_elements(get(i, P), get(i, Q));
@@ -56,21 +58,24 @@ galois_field bch_code::build_galois_field(int _n) {
         throw std::overflow_error("BCH code doesn't exist or order is too big");
     }
 
-    //Полином x^m + x^i + 1
+//TODO Прикрутить нормальную генерацию порождающих многочленов
+    if (m == 8) {
+        return galois_field((1 << 8) | (1 << 4) | (1 << 3) | 5);
+    }
+
+    //Полином x^m + x^i + 1 - не всегда примитивный
     for (int i = 1; i < m; ++i) {
         int irreducible_polynomial = (1 << m) | (1 << i) | 1;
         //Нужно проверить является ли этот многочлен примитивным
         //Для этого нужно проверить, что все его корни - порождающие элементы мультипликативной группы поля
         //То есть порядок любого корня должен быть равен порядку мультпликативной группы расширенного поля, т.е. (1 << m) - 1
         try {
-            return  galois_field(irreducible_polynomial);
-        } catch (std::invalid_argument& e) {
+            return galois_field(irreducible_polynomial);
+        } catch (std::invalid_argument &e) {
             continue;
         }
     }
 
-    //многочлен вида x^m + x + 1 = (10...011) неприводим над GF(2)
-//    return galois_field(1 << m | 3);
     throw std::runtime_error("Can't create galois field");
 }
 
@@ -206,14 +211,14 @@ std::vector<int> bch_code::get_roots(std::vector<int> &polynomial) const {
 std::vector<int> bch_code::find_errors(std::vector<int> &corrupted_word) const {
     auto locators = decoder_berlekamp_massey(get_syndrome_vector(corrupted_word));
     auto roots = get_roots(locators);
-    for (int & root : roots) {
+    for (int &root: roots) {
         root = GF.getLog(GF.getInverse(root));
     }
     std::sort(roots.begin(), roots.end());
     return roots;
 }
 
-void bch_code::invert_symbol(std::vector<int>& code, int index) {
+void bch_code::invert_symbol(std::vector<int> &code, int index) {
     if (code[index] == 0) {
         code[index] = 1;
     } else {
@@ -224,7 +229,7 @@ void bch_code::invert_symbol(std::vector<int>& code, int index) {
 std::vector<int> bch_code::fix_errors(std::vector<int> &corrupted_word) const {
     auto errors_positions = find_errors(corrupted_word);
     std::vector<int> fixed(corrupted_word);
-    for(auto t: errors_positions) {
+    for (auto t: errors_positions) {
         invert_symbol(fixed, t);
     }
     return fixed;

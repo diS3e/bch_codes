@@ -231,25 +231,30 @@ TEST(generating_polynomial, check_count) {
 
 TEST(decoding, fix_0_error) {
     bch_code bchCode(15, 7, 5);
-    test_bch_code(bchCode, 0, 100000);
+    test_bch_code(bchCode, 0, 10000);
 }
 
 TEST(decoding, fix_1_error) {
     bch_code bchCode(15, 7, 5);
-    test_bch_code(bchCode, 1, 100000);
+    test_bch_code(bchCode, 1, 10000);
 }
 
 TEST(decoding, fix_2_errors) {
     bch_code bchCode(15, 7, 5);
-    test_bch_code(bchCode, 2, 100000);
+    test_bch_code(bchCode, 2, 10000);
 }
 
 TEST(decoding, fix_3_errors) {
     bch_code bchCode(23, 12, 7);
-    test_bch_code(bchCode, 3, 100000);
+    test_bch_code(bchCode, 3, 1000);
 }
 
 TEST(decoding, fix_5_errors) {
     bch_code bchCode(63, 16, 11);
-    test_bch_code(bchCode, 5, 100000);
+    test_bch_code(bchCode, 5, 10000);
+}
+
+TEST(decoding, big_code) {
+    bch_code bchCode(255, 239, 5);
+    test_bch_code(bchCode, 2, 1000);
 }

@@ -4,7 +4,6 @@
 
 #include <cmath>
 #include <stdexcept>
-#include <iostream>
 #include "galois_field.h"
 
 galois_field::galois_field(int generating_polynomial) {
