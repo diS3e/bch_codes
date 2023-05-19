@@ -4,6 +4,7 @@
 #include <gtest/gtest.h>
 #include <random>
 #include "bch_codes.h"
+#include "chase_decoder.h"
 
 //Нас интересуют только GF(2^m)
 //Элементы этого поля задаются, как вектора над полем GF(2), т.е. двоичные представления int
@@ -29,14 +30,14 @@
 //(0001) = alpha^15 = (10010) + (10011)
 
 //Генерация случайных чисел
-std::mt19937 rng(std::chrono::steady_clock::now().time_since_epoch().count());
-int rnd(int l, int r) {
-    std::uniform_int_distribution<int> range(l, r);
-    return range(rng);
-}
-
-std::random_device rd;
-std::mt19937 e2(rd());
+//std::mt19937 rng(std::chrono::steady_clock::now().time_since_epoch().count());
+//int rnd(int l, int r) {
+//    std::uniform_int_distribution<int> range(l, r);
+//    return range(rng);
+//}
+//
+//std::random_device rd;
+//std::mt19937 e2(rd());
 
 
 void vector_equals(std::vector<int> const &a, std::vector<int> const &b) {
@@ -55,6 +56,13 @@ std::vector<int> intToBinary(int number) {
 
     return binary_representation;
 }
+
+int rnd(int l, int r) {
+    static std::mt19937 rng(std::chrono::steady_clock::now().time_since_epoch().count());
+    std::uniform_int_distribution<int> range(l, r);
+    return range(rng);
+}
+
 void test_bch_code(bch_code& bchCode, int errors, int iterations) {
     int random_word = rnd(0, (1 << bchCode.k) - 1);
     auto information_word = intToBinary(random_word);
@@ -257,4 +265,38 @@ TEST(decoding, fix_5_errors) {
 TEST(decoding, big_code) {
     bch_code bchCode(255, 239, 5);
     test_bch_code(bchCode, 2, 1000);
+}
+
+bool words_equals(std::vector<int> const &a, std::vector<int> const &b) {
+    if (a.size() != b.size()) return false;
+    for (int i = 0; i < a.size(); ++i) {
+        if (a[i] != b[i]) return false;
+    }
+    return true;
+}
+
+TEST(chase_decoding, base) {
+    bch_code bchCode(63, 35, 12);
+    chase_decoder chaseDecoder(bchCode);
+
+    for (double Eb = 0.0; Eb < 6.0; Eb += 0.1) {
+        double correct = 0;
+        double all = 10;
+        for(int tries = 0; tries < all; tries++){
+            std::vector<int> information_word(bchCode.k);
+            for (int & j : information_word) {
+                j = rnd(0, 1);
+            }
+            auto coded_word = bchCode.code_word(information_word);
+            std::vector<double> corrupt = chaseDecoder.get_corrupt(coded_word, pow(10.0, (Eb / 10)));
+            auto results = chaseDecoder.chase_decoding_2(corrupt, 6);
+            for(auto &t: results) {
+                if (words_equals(t, coded_word)) {
+                    correct++;
+                    break;
+                }
+            }
+        }
+        std::cout << std::fixed << std::setprecision(5) << Eb << ";" << correct / all << '\n';
+    }
 }
