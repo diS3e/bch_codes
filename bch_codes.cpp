@@ -4,6 +4,8 @@
 #include "bch_codes.h"
 #include <algorithm>
 #include <set>
+#include <stdexcept>
+#include <iostream>
 
 int bch_code::get(int i, const std::vector<int> &v) {
     return (0 <= i && i < v.size()) ? v[i] : 0;
@@ -103,7 +105,7 @@ galois_field bch_code::build_galois_field(int _n) {
         minimal_polynomials.insert(minimal_polynomial);
     }
 
-    std::vector generating_polynomial{1};
+    std::vector<int> generating_polynomial{1};
     for (auto &t: minimal_polynomials) {
         generating_polynomial = multiply_polynomial(generating_polynomial, t);
     }
@@ -111,12 +113,18 @@ galois_field bch_code::build_galois_field(int _n) {
     return generating_polynomial;
 }
 
-bch_code::bch_code(int _n, int _k, int _delta) :
+bch_code::bch_code(int _n, int _delta) :
         GF(build_galois_field(_n)),
         generatingPolynomial(get_generating_polynomial(_delta)) {
     n = _n;
-    k = _k;
+    k = n - generatingPolynomial.size() + 1;
+    if (_delta > n) {
+        throw std::runtime_error("Can't create code with delta > n");
+    }
     delta = _delta;
+    std::cout << "generating_size: " << generatingPolynomial.size() << '\n';
+    std::cout << "res: " << n <<  ' ' << k << ' ' << delta << '\n';
+
 }
 
 std::vector<int> bch_code::shiftLeft(const std::vector<int> &a, size_t shift) {

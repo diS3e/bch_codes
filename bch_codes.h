@@ -5,11 +5,7 @@
 #ifndef BCH_CODES_BCH_CODES_H
 #define BCH_CODES_BCH_CODES_H
 
-#include <cmath>
-#include <map>
-#include <bitset>
 #include <vector>
-#include <stdexcept>
 #include "galois_field.h"
 
 
@@ -20,12 +16,12 @@ public:
     int n;
     int k;
     int delta;
-    bch_code(int _n, int _k, int _delta);
+    bch_code(int _n, int _delta);
     static int get(int i, const std::vector<int> &v);
     static void invert_symbol(std::vector<int>& code, int index) ;
     static galois_field build_galois_field(int _n) ;
     static std::vector<int> shrink(const std::vector<int> &a);
-    static std::vector<int> shiftLeft(const std::vector<int> &a, size_t shift) ;
+    static std::vector<int> shiftLeft(const std::vector<int> &a, std::size_t shift) ;
 
     std::vector<int> find_errors(std::vector<int> &corrupted_word) const ;
 
