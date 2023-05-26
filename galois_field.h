@@ -6,10 +6,14 @@
 #define BCH_CODES_GALOIS_FIELD_H
 
 
+#include <vector>
+
 struct galois_field {
+
+    int m;
+    int q;
     int *log_to_element;
     int *element_to_log;
-    int m;
 
     explicit galois_field(int generating_polynomial);
 

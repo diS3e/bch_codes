@@ -1,15 +1,8 @@
-//TODO декодер чейза
-
-//TODO графики такие же как для порядковых статистик
-
-//TODO среднее количество различных векторов
-
 #include <iostream>
 #include <fstream>
-//#include <iomanip>
 #include "chase_decoder.h"
 
-random rnd;
+struct random rnd;
 
 std::vector<int> strToVector(std::string &string) {
     std::vector<int> result(string.size());
@@ -83,7 +76,6 @@ int main(int argc, char *argv[]) {
             auto coded_word = bchCode.code_word(information_word);
             auto corrupted_word(coded_word);
             std::set<int> set;
-
             for (int j = 0; j < errors; ++j) {
                 int x = rnd.rnd(0, n - 1);
                 while (set.count(x) != 0) {
@@ -92,10 +84,6 @@ int main(int argc, char *argv[]) {
                 bch_code::invert_symbol(corrupted_word, x);
                 set.insert(x);
             }
-
-//            for (int j = 0; j < errors; ++j) {
-//                if ()
-//            }
             auto fixed_word = bchCode.fix_errors(corrupted_word);
             if (words_equals(fixed_word, coded_word)) {
                 successfully_decoded++;

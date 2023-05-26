@@ -14,7 +14,7 @@
 
 struct chase_decoder {
     bch_code bchCode;
-    random rnd;
+    struct random rnd;
 
 
     explicit chase_decoder(bch_code &bchCode1) : bchCode(bchCode1) {}
@@ -23,7 +23,7 @@ struct chase_decoder {
         std::vector<double> ans(bchCode.n, 0);
         for (int i = 0; i < bchCode.n; ++i) {
             ans[i] = ((random_codeword[i] * 2) - 1) +
-                    sqrt(static_cast<double>(bchCode.n) / (2 * arg * bchCode.k)) * rnd.normal(rnd.rng);
+                     sqrt(static_cast<double>(bchCode.n) / (2 * arg * bchCode.k)) * rnd.normal(rnd.rng);
         }
         return ans;
     }
@@ -43,7 +43,6 @@ struct chase_decoder {
         }
         return ans;
     }
-
 
 
     static std::vector<int> get_unreliable_positions(std::vector<double> &reliability, int d) {
@@ -72,10 +71,11 @@ struct chase_decoder {
         return binary_representation;
     }
 
-    std::set<std::vector<int>> chase_decoding_2(std::vector<double> &corrupted_word, int tau) const {
+    std::vector<std::vector<int>> chase_decoding_2(std::vector<double> &corrupted_word, int tau) const {
         auto signs = get_signs(corrupted_word);
         auto reliability = get_reliability(corrupted_word);
-        std::set<std::vector<int>> results;
+        std::vector<std::vector<int>> results;
+        results.reserve(1 << 6);
         long double mu_min = std::numeric_limits<long double>::max();
         auto unreliable_positions = get_unreliable_positions(reliability, tau);
         for (int i = 0; i < (1 << tau); ++i) {
@@ -89,21 +89,18 @@ struct chase_decoder {
 
             long double mu = 0;
             for (int j = 0; j < fixed.size(); ++j) {
-//                if (fixed[j] != signs[j]) {
-                    mu += reliability[j];
-//                    mu += (fixed[j] ^ signs[j]);
-//                }
+                mu += reliability[j];
             }
             if (mu <= mu_min) {
                 if (mu < mu_min) {
                     mu_min = mu;
                     results.clear();
                 }
-                results.insert(fixed);
+                results.push_back(fixed);
             }
         }
         return results;
-        }
+    }
 };
 
 #endif //BCH_CODES_CHASE_DECODER_H

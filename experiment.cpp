@@ -3,10 +3,9 @@
 //
 
 #include <iostream>
-#include <fstream>
 #include <iomanip>
 #include "chase_decoder.h"
-random rnd;
+struct random rnd;
 
 bool words_equals(std::vector<int> const &a, std::vector<int> const &b) {
     if (a.size() != b.size()) return false;
@@ -18,18 +17,18 @@ bool words_equals(std::vector<int> const &a, std::vector<int> const &b) {
 
 
 
-void collect_data() {
-    bch_code bchCode(63, 11);
+void collect_data(int n, int delta, int precision, int tau) {
+    bch_code bchCode(n, delta);
     chase_decoder chaseDecoder(bchCode);
 
-    for (double Eb = 5.0; Eb < 6.0; Eb += 0.1) {
+    for (double Eb = 4.0; Eb < 6.0; Eb += 0.5) {
         double correct = 0;
-        double all = 1000;
+        double all = precision;
         for(int tries = 0; tries < all; tries++) {
             auto information_word = rnd.get_random_word(bchCode.k);
             auto coded_word = bchCode.code_word(information_word);
             std::vector<double> corrupt = chaseDecoder.get_corrupt(coded_word, pow(10.0, (Eb / 10)));
-            auto results = chaseDecoder.chase_decoding_2(corrupt, 6);
+            auto results = chaseDecoder.chase_decoding_2(corrupt, tau);
             for(auto &t: results) {
                 if (words_equals(t, coded_word)) {
                     correct++;
@@ -37,10 +36,10 @@ void collect_data() {
                 }
             }
         }
-        std::cout << std::fixed << std::setprecision(5) << Eb << ";" << correct / all << '\n';
+        std::cout << std::fixed << std::setprecision(6) << Eb << ";" << correct / all << '\n';
     }
 }
 
 int main() {
-    collect_data();
+    collect_data(63, 11, 1000, 8);
 }

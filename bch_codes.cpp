@@ -11,7 +11,7 @@ int bch_code::get(int i, const std::vector<int> &v) {
     return (0 <= i && i < v.size()) ? v[i] : 0;
 }
 
-// Метод shrink - убирается нулевые старшие степени
+// Метод shrink - убираются нулевые старшие степени
 std::vector<int> bch_code::shrink(const std::vector<int> &a) {
     std::vector<int> result(a);
     while (!result.empty() && result[result.size() - 1] == 0) {
@@ -122,8 +122,6 @@ bch_code::bch_code(int _n, int _delta) :
         throw std::runtime_error("Can't create code with delta > n");
     }
     delta = _delta;
-    std::cout << "generating_size: " << generatingPolynomial.size() << '\n';
-    std::cout << "res: " << n <<  ' ' << k << ' ' << delta << '\n';
 
 }
 
@@ -144,11 +142,25 @@ std::vector<int> bch_code::mod(std::vector<int> a, std::vector<int> &b) const {
     return a;
 }
 
-[[nodiscard]] int bch_code::evaluate(std::vector<int> polynomial, int a) const {
+[[nodiscard]] int bch_code::evaluate(const std::vector<int> &logs_polynomial, int a) const {
     int value = 0;
-    for (int j = 0; j < polynomial.size(); ++j) {
-        value = GF.sum_elements(value, GF.multiply_elements(polynomial[j], GF.getPower(a, j)));
+    if (a == 0) {
+        if (logs_polynomial[0] == -1) {
+            return 0;
+        } else {
+            return GF.getElement(logs_polynomial[0]);
+        }
     }
+
+    int power = GF.getLog(a);
+
+        for (int j = 0; j < logs_polynomial.size(); ++j) {
+            if (logs_polynomial[j] != -1) {
+                value ^= GF.getElement(logs_polynomial[j] + power * j);
+            }
+        }
+
+
     return value;
 }
 
@@ -160,11 +172,22 @@ std::vector<int> bch_code::code_word(std::vector<int> &information_word) {
 }
 
 [[nodiscard]] std::vector<int> bch_code::get_syndrome_vector(const std::vector<int> &corrupted_word) const {
-    std::vector<int> syndrome(delta - 1);
+    std::vector<int> syndrome(delta - 1, 0);
     for (int i = 1; i <= 1 + delta - 2; ++i) {
-        syndrome[i - 1] = evaluate(corrupted_word, GF.getElement(i));
+        for (int j = 0; j < corrupted_word.size(); ++j) {
+            if (corrupted_word[j] != 0) {
+                syndrome[i - 1] ^= GF.getElement(i * j);
+            }
+        }
     }
     return syndrome;
+}
+
+void scalar_mul_vector(int scalar, std::vector<int> &vector, std::vector<int>& result, galois_field GF) {
+    result.resize(vector.size());
+    for (int i = 0; i < result.size(); ++i) {
+        result[i] = GF.multiply_elements(scalar, vector[i]);
+    }
 }
 
 [[nodiscard]] std::vector<int> bch_code::decoder_berlekamp_massey(const std::vector<int> &syndrome) const {
@@ -183,14 +206,12 @@ std::vector<int> bch_code::code_word(std::vector<int> &information_word) {
             );
         }
         if (delta_r != 0) {
-            std::vector<int> T;
-            std::vector<int> poly{delta_r};
-            poly = shiftLeft(poly, r - m);
-            T = summing_polynomial(locators,
-                                   multiply_polynomial(poly, B));
+            std::vector<int> B_temp(shiftLeft(B, r - m));
+            scalar_mul_vector(delta_r, B_temp, B_temp, GF);
+            std::vector<int> T(summing_polynomial(locators, B_temp));
             if (2 * L <= r - 1) {
-                B = multiply_polynomial({GF.getInverse(delta_r)},
-                                        locators);
+                int x = GF.getInverse(delta_r);
+                scalar_mul_vector(x, locators, B, GF);
                 locators = T;
                 L = r - L;
                 m = r;
@@ -204,15 +225,27 @@ std::vector<int> bch_code::code_word(std::vector<int> &information_word) {
 }
 
 std::vector<int> bch_code::get_roots(std::vector<int> &polynomial) const {
-    std::vector<int> roots;
-    for (int i = 0; i < (1 << GF.m); ++i) {
-        if (evaluate(polynomial, i) == 0) {
-            roots.push_back(i);
-            if (roots.size() == polynomial.size() - 1) {
+    std::vector<int> roots(polynomial.size() - 1, GF.q);
+    std::vector<int> logs_polynomial(polynomial);
+    for(auto &t : logs_polynomial) {
+        if (t != 0) {
+            t = GF.getLog(t);
+        } else {
+            t = -1;
+        }
+    }
+    int roots_count = 0;
+    size_t polynomial_degree = polynomial.size() - 1;
+    for (int i = 0; i < GF.q; ++i) {
+        if (evaluate(logs_polynomial, i) == 0) {
+            roots[roots_count] = i;
+            roots_count++;
+            if (roots_count == polynomial_degree) {
                 break;
             }
         }
     }
+    roots.resize(roots_count);
     return roots;
 }
 
@@ -220,7 +253,9 @@ std::vector<int> bch_code::find_errors(std::vector<int> &corrupted_word) const {
     auto locators = decoder_berlekamp_massey(get_syndrome_vector(corrupted_word));
     auto roots = get_roots(locators);
     for (int &root: roots) {
-        root = GF.getLog(GF.getInverse(root));
+//        if (root != GF.q) {
+            root = GF.getLog(GF.getInverse(root));
+//        }
     }
     std::sort(roots.begin(), roots.end());
     return roots;
