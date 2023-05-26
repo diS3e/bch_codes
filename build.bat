@@ -1,0 +1,1 @@
+g++ main.cpp bch_codes.h bch_codes.cpp galois_field.h galois_field.cpp chase_decoder.h random.h -o run
