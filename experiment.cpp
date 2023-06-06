@@ -61,5 +61,5 @@ void collect_mean_numbers_vector(int n, int delta, int precision, int tau) {
 
 
 int main() {
-    collect_mean_numbers_vector(63, 11, 1000, 6);
+    collect_mean_numbers_vector(63, 11, 10000, 8);
 }
