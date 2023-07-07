@@ -35,16 +35,25 @@ public:
 
     std::vector<int> fix_errors(std::vector<int> &corrupted_word) const;
 
-private:
+//private:
     [[nodiscard]] std::vector<int> multiply_polynomial(const std::vector<int> &P, const std::vector<int> &Q) const;
 
     [[nodiscard]] std::vector<int> summing_polynomial(const std::vector<int> &P, const std::vector<int> &Q) const;
 
     [[nodiscard]] std::vector<int> get_generating_polynomial(int _delta) const;
 
-    std::vector<int> mod(std::vector<int> a, std::vector<int> &b) const;
+    int degree(std::vector<int> &polynomial) const;
 
-    [[nodiscard]] int evaluate(const std::vector<int> &logs_polynomial, int a) const;
+    std::vector<int> gcd(std::vector<int> a, std::vector<int> b) const;
+
+    std::vector<int> mod(std::vector<int> a, std::vector<int> &b) const;
+    std::vector<int> div(std::vector<int> a, std::vector<int> &b) const;
+
+    [[nodiscard]] int evaluate_with_log_polynomial(const std::vector<int> &logs_polynomial, int a) const;
+
+    [[nodiscard]] int evaluate(const std::vector<int> &polynomial, int a) const;
+
+
 
     [[nodiscard]] std::vector<int> get_syndrome_vector(const std::vector<int> &corrupted_word) const;
 

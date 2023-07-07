@@ -136,13 +136,77 @@ std::vector<int> bch_code::shiftLeft(const std::vector<int> &a, size_t shift) {
 std::vector<int> bch_code::mod(std::vector<int> a, std::vector<int> &b) const {
     while (a.size() >= b.size()) {
         std::vector<int> t = shiftLeft(b, a.size() - b.size());
+        int coeff = GF.multiply_elements(a[a.size() - 1], GF.getInverse(t[t.size() - 1]));
+        t = multiply_polynomial({coeff}, t);
         a = shrink(summing_polynomial(a, t));
     }
 
     return a;
 }
 
-[[nodiscard]] int bch_code::evaluate(const std::vector<int> &logs_polynomial, int a) const {
+std::vector<int> bch_code::div(std::vector<int> a, std::vector<int> &b) const {
+//    while (a.size() >= b.size()) {
+//        std::vector<int> t = shiftLeft(b, a.size() - b.size());
+//        int coeff = GF.multiply_elements(a[a.size() - 1], GF.getInverse(t[t.size() - 1]));
+//        t = multiply_polynomial({coeff}, t);
+//        a = shrink(summing_polynomial(a, t));
+//    }
+//
+//    return a;
+//    int zero_index = 0;
+//    while (b[zero_index] != 0 && zero_index < b.size()) {
+//        zero_index++;
+//    }
+a = shrink(a);
+b = shrink(b);
+if (a.size() < b.size()) {
+    return {0};
+}
+    std::vector<int> result(a.size() - b.size() + 1, 0);
+    while(a.size()!= 0) {
+        auto t = shiftLeft(b, a.size() - b.size());
+        int coeff = GF.multiply_elements(a[a.size() - 1], GF.getInverse(t[t.size() - 1]));
+        result[a.size() - b.size()] = coeff;
+        t = multiply_polynomial({coeff}, t);
+        a = summing_polynomial(t, a);
+        a = shrink(a);
+    }
+    return result;
+}
+
+int bch_code::degree(std::vector<int> &polynomial) const {
+    if (polynomial.empty()) {
+        return 0;
+    }
+    for (int i = polynomial.size() - 1; i >= 0; --i) {
+        if (polynomial[i] != 0) {
+            return i;
+        }
+    }
+    return 0;
+
+}
+
+std::vector<int> bch_code::gcd(std::vector<int> a, std::vector<int> b) const {
+    a = shrink(a);
+    b = shrink(b);
+
+    while (b.size() != 0) {
+        a = mod(a, b);
+        std::swap(a, b);
+    }
+    return a;
+}
+
+int bch_code::evaluate(const std::vector<int> &polynomial, int a) const {
+    std::vector<int> logs_polynomial(polynomial);
+    for (int &i: logs_polynomial) {
+        i = (i == 0) ? -1 : GF.getLog(i);
+    }
+    return evaluate_with_log_polynomial(logs_polynomial, a);
+}
+
+[[nodiscard]] int bch_code::evaluate_with_log_polynomial(const std::vector<int> &logs_polynomial, int a) const {
     int value = 0;
     if (a == 0) {
         if (logs_polynomial[0] == -1) {
@@ -154,11 +218,11 @@ std::vector<int> bch_code::mod(std::vector<int> a, std::vector<int> &b) const {
 
     int power = GF.getLog(a);
 
-        for (int j = 0; j < logs_polynomial.size(); ++j) {
-            if (logs_polynomial[j] != -1) {
-                value ^= GF.getElement(logs_polynomial[j] + power * j);
-            }
+    for (int j = 0; j < logs_polynomial.size(); ++j) {
+        if (logs_polynomial[j] != -1) {
+            value ^= GF.getElement(logs_polynomial[j] + power * j);
         }
+    }
 
 
     return value;
@@ -183,7 +247,7 @@ std::vector<int> bch_code::code_word(std::vector<int> &information_word) {
     return syndrome;
 }
 
-void scalar_mul_vector(int scalar, std::vector<int> &vector, std::vector<int>& result, galois_field GF) {
+void scalar_mul_vector(int scalar, std::vector<int> &vector, std::vector<int> &result, galois_field GF) {
     result.resize(vector.size());
     for (int i = 0; i < result.size(); ++i) {
         result[i] = GF.multiply_elements(scalar, vector[i]);
@@ -227,7 +291,7 @@ void scalar_mul_vector(int scalar, std::vector<int> &vector, std::vector<int>& r
 std::vector<int> bch_code::get_roots(std::vector<int> &polynomial) const {
     std::vector<int> roots(polynomial.size() - 1, GF.q);
     std::vector<int> logs_polynomial(polynomial);
-    for(auto &t : logs_polynomial) {
+    for (auto &t: logs_polynomial) {
         if (t != 0) {
             t = GF.getLog(t);
         } else {
@@ -237,7 +301,7 @@ std::vector<int> bch_code::get_roots(std::vector<int> &polynomial) const {
     int roots_count = 0;
     size_t polynomial_degree = polynomial.size() - 1;
     for (int i = 0; i < GF.q; ++i) {
-        if (evaluate(logs_polynomial, i) == 0) {
+        if (evaluate_with_log_polynomial(logs_polynomial, i) == 0) {
             roots[roots_count] = i;
             roots_count++;
             if (roots_count == polynomial_degree) {
@@ -254,7 +318,7 @@ std::vector<int> bch_code::find_errors(std::vector<int> &corrupted_word) const {
     auto roots = get_roots(locators);
     for (int &root: roots) {
 //        if (root != GF.q) {
-            root = GF.getLog(GF.getInverse(root));
+        root = GF.getLog(GF.getInverse(root));
 //        }
     }
     std::sort(roots.begin(), roots.end());

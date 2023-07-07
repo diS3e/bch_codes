@@ -11,8 +11,10 @@
 #include "bch_codes.h"
 #include "random.h"
 #include<set>
+#include <bitset>
 
 struct chase_decoder {
+
     bch_code bchCode;
     struct random rnd;
 
@@ -100,6 +102,183 @@ struct chase_decoder {
             }
         }
         return results;
+    }
+
+
+//    static std::vector<std::vector<int>> get_tree_layers(int tau) {
+//        std::vector<std::vector<int>> ans(tau + 1);
+//        for (int i = 0; i < (1 << tau); ++i) {
+//            std::bitset<32> a(i);
+//            ans[a.count()].push_back(i);
+//        }
+//        return ans;
+//    }
+
+    int get_even(std::vector<int> &polynomial, int degree) {
+        return polynomial[degree * 2];
+    }
+
+    int get_odd(std::vector<int> &polynomial, int degree) {
+        return polynomial[degree * 2 + 1];
+    }
+
+
+    std::vector<int> get_modified_syndrome(std::vector<int> &syndrome) {
+        int t = (bchCode.delta - 1) / 2;
+        std::vector<int> a(t);
+        a[0] = get_even(syndrome, 0);
+        for (int i = 1; i < t; ++i) {
+            a[i] = get_even(syndrome, i);
+            for (int j = 1; j <= i; ++j) {
+                a[i] = bchCode.GF.sum_elements(a[i], bchCode.GF.multiply_elements(a[i - j], get_odd(syndrome, j - 1)));
+            }
+        }
+        return a;
+    }
+
+
+    std::pair<std::pair<std::vector<int>, std::vector<int>>, std::pair<std::vector<int>, std::vector<int>>>
+    fitzpatrick(std::vector<int> &syndrome) {
+        int t = (bchCode.delta - 1) / 2;
+        std::vector<std::vector<int>> b{{0},
+                                        {1}};
+        std::vector<int> alpha{1, -100};
+        int i = 1;
+        int j = 1;
+        int d = 1;
+        for (int k = 0; k < t; ++k) {
+            alpha[j] = bchCode.multiply_polynomial(syndrome, b[j])[k];
+            if (alpha[i] != 0) {
+                int coeff = bchCode.GF.multiply_elements(alpha[1 ^ i], bchCode.GF.getInverse(alpha[i]));
+                b[i ^ 1] = bchCode.summing_polynomial(b[i ^ 1],
+                                                      bchCode.multiply_polynomial({coeff}, b[i]));
+                b[i] = bch_code::shiftLeft(b[i], 1);
+                j = i ^ 1;
+                d--;
+                if (d == 0) {
+                    i = i ^ 1;
+                    d = 1;
+                }
+            } else {
+                b[i ^ 1] = bch_code::shiftLeft(b[i ^ 1], 1);
+                j = i;
+                d++;
+            }
+        }
+        std::vector<std::vector<int>> a(2);
+        for (int k = 0; k < 2; ++k) {
+            a[k] = bchCode.multiply_polynomial(syndrome, b[k]);
+            a[k].resize(t);
+        }
+        return {{a[0], b[0]},
+                {a[1], b[1]}};
+    }
+
+    std::vector<int> subs_square(std::vector<int> &polynomial) {
+        std::vector<int> result(polynomial.size() << 1, 0);
+        for (int i = 0; i < polynomial.size(); ++i) {
+            result[i << 1] = polynomial[i];
+        }
+        return result;
+    }
+
+    std::vector<int> mu(std::pair<std::vector<int>, std::vector<int>> &polynomial_pair) {
+        return bchCode.summing_polynomial(subs_square(polynomial_pair.second),
+                                          bch_code::shiftLeft(subs_square(polynomial_pair.first), 1));
+    }
+
+
+
+    double wdeg(std::pair<std::vector<int>, std::vector<int>> &polynomial_pair, double w) {
+        double deg_first = bchCode.degree(polynomial_pair.first);
+        double deg_second = bchCode.degree(polynomial_pair.second);
+        bool is_zero_first = deg_first == 0 && (polynomial_pair.first.empty() || polynomial_pair.first[0] == 0);
+        bool is_zero_second = deg_second == 0 && (polynomial_pair.second.empty() || polynomial_pair.second[0] == 0);
+        if (is_zero_first && is_zero_second) {
+            return 0;
+        } else if (is_zero_first) {
+            return deg_second + w;
+        } else if (is_zero_second) {
+            return deg_first;
+        } else
+        return std::max(deg_first, deg_second + w);
+    }
+
+    std::pair<std::pair<std::vector<int>, std::vector<int>>, std::pair<std::vector<int>, std::vector<int>>>
+    kotter_iteration(double w,
+                     std::pair<std::pair<std::vector<int>, std::vector<int>>, std::pair<std::vector<int>, std::vector<int>>> &G,
+                     const std::vector<int> &h1, const std::vector<int> &h2, int error_locator) {
+        std::vector<std::pair<std::vector<int>, std::vector<int>>> Gnew(2);
+        auto g1 = G.first;
+        auto g2 = G.second;
+        int J = -1;
+        galois_field &GF = bchCode.GF;
+        std::vector<int> delta(2, 0);
+        int inverse = GF.getInverse(error_locator);
+        int hh1 = bchCode.evaluate(h1, GF.getInverse(error_locator));
+        int hh2 = bchCode.evaluate(h2, GF.getInverse(error_locator));
+
+        int inverse_square = GF.getPower(error_locator, -2);
+        if (hh1 != 0) {
+            int coef = GF.multiply_elements(hh2, GF.getInverse(hh1));
+            delta[0] = GF.sum_elements(bchCode.evaluate(G.first.first, inverse_square),
+                                       GF.multiply_elements(coef, bchCode.evaluate(G.first.second,
+                                                                                                       inverse_square)));
+            delta[1] = GF.sum_elements(bchCode.evaluate(G.second.first, inverse_square),
+                                       GF.multiply_elements(coef, bchCode.evaluate(G.second.second,
+                                                                                                       inverse_square)));
+        } else {
+            delta[0] = bchCode.evaluate(G.first.second, inverse_square);
+            delta[1] = bchCode.evaluate(G.second.second, inverse_square);
+        }
+        std::vector<int> A;
+        for (int i = 0; i < 2; ++i) {
+            if (delta[i] != 0) {
+                A.push_back(i);
+            } else {
+                Gnew[i] = (i == 0) ? G.first : G.second;
+            }
+        }
+        if (A.size() == 1) {
+            J = A[0];
+        } else {
+            double wdeg1 = wdeg(G.first, w);
+            double wdeg2 = wdeg(G.second, w);
+
+            if (wdeg(G.first, w) < wdeg(G.second, w)) {
+                J = 0;
+            } else {
+                J = 1;
+            }
+        }
+        auto& G_J = (J == 0) ? G.first : G.second;
+        for(int j : A) {
+            auto& G_j = (j == 0) ? G.first : G.second;
+            if (j != J) {
+                int coef = GF.multiply_elements(delta[J], GF.getInverse(delta[j]));
+                Gnew[j].first = bchCode.summing_polynomial(bchCode.multiply_polynomial({coef}, G_j.first), G_J.first);
+                Gnew[j].second = bchCode.summing_polynomial(bchCode.multiply_polynomial({coef}, G_j.second), G_J.second);
+            } else {
+                Gnew[j].first = bchCode.multiply_polynomial({inverse_square, 1}, G_J.first);
+                Gnew[j].second = bchCode.multiply_polynomial({inverse_square, 1}, G_J.second);
+            }
+        }
+        return {Gnew[0], Gnew[1]};
+    }
+
+    std::vector<std::vector<int>> fast_chase_decoding_2(std::vector<double> &corrupted_word, int tau) {
+        auto signs = get_signs(corrupted_word);
+        auto reliability = get_reliability(corrupted_word);
+        std::vector<std::vector<int>> results;
+
+//        auto tree_layers = get_tree_layers(tau);
+
+        for (int tree_layer = 0; tree_layer < tau; ++tree_layer) {
+
+        }
+
+        //TODO Сделать алгоритм из статьи
+
     }
 };
 

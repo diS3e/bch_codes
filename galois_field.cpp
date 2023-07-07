@@ -33,14 +33,14 @@ inline void galois_field::check_containing_element(int a) const {
 }
 
 [[nodiscard]] int galois_field::sum_elements(int a, int b) const {
-//    check_containing_element(a);
-//    check_containing_element(b);
+    check_containing_element(a);
+    check_containing_element(b);
     return a ^ b;
 }
 
 [[nodiscard]] int galois_field::multiply_elements(int a, int b) const {
-//    check_containing_element(a);
-//    check_containing_element(b);
+    check_containing_element(a);
+    check_containing_element(b);
     if (a == 0 || b == 0) {
         return 0;
     }
@@ -48,7 +48,7 @@ inline void galois_field::check_containing_element(int a) const {
 }
 
 [[nodiscard]] int galois_field::getLog(int element) const {
-//    check_containing_element(element);
+    check_containing_element(element);
     if (element == 0) {
         throw std::range_error("Can't get log from 0");
     }
