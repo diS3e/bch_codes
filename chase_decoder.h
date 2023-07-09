@@ -107,28 +107,16 @@ struct chase_decoder {
         return results;
     }
 
-
-//    static std::vector<std::vector<int>> get_tree_layers(int tau) {
-//        std::vector<std::vector<int>> ans(tau + 1);
-//        for (int i = 0; i < (1 << tau); ++i) {
-//            std::bitset<32> a(i);
-//            ans[a.count()].push_back(i);
-//        }
-//        return ans;
-//    }
-
     int get_even(std::vector<int> &polynomial, int degree) {
         return bchCode.get(degree * 2, polynomial);
     }
 
     int get_odd(std::vector<int> &polynomial, int degree) {
-//        return polynomial[degree * 2 + 1];
         return bchCode.get(degree * 2 + 1, polynomial);
     }
 
 
     std::vector<int> get_modified_syndrome(std::vector<int> &syndrome, int t) {
-//        int t = (bchCode.delta - 1) / 2;
         std::vector<int> a(t);
         a[0] = get_even(syndrome, 0);
         for (int i = 1; i < t; ++i) {
@@ -143,7 +131,6 @@ struct chase_decoder {
 
     std::pair<std::pair<std::vector<int>, std::vector<int>>, std::pair<std::vector<int>, std::vector<int>>>
     fitzpatrick(std::vector<int> &syndrome, int t) {
-//        int t = (bchCode.delta - 1) / 2;
         std::vector<std::vector<int>> b{{0},
                                         {1}};
         std::vector<int> alpha{1, -100};
@@ -272,7 +259,6 @@ struct chase_decoder {
     }
 
     void dfs(std::vector<int> &tree, std::vector<std::set<int>> &layers, int u, int tau, int depth) {
-//        layers.insert({depth, u});
         layers[depth].insert(u);
         for (int i = 0; i < (tau); ++i) {
             if (((1 << i) & u) == 0 && tree[(1 << i) | u] == -1) {
@@ -297,7 +283,7 @@ struct chase_decoder {
         //Инициализация
         auto signs = get_signs(corrupted_word);
         auto reliability = get_reliability(corrupted_word);
-//        std::vector<int> signs{0, 0, 1, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 1, 0};
+
         std::set<std::vector<int>> results;
 
         //Поиск синдрома и модифицированного синдрома. Нахождение базиса модифицированного модуля решений
@@ -307,7 +293,6 @@ struct chase_decoder {
         auto H = fitzpatrick(modifiedSyndrome, t);
 
         //Проверка решения(если ошибок <= t)
-        int index = -1;
 
         std::vector<int> sigma;
         if (wdeg(H.first, -1) < wdeg(H.second, -1)) {
@@ -317,16 +302,11 @@ struct chase_decoder {
         }
         auto roots = bchCode.get_roots(sigma);
         if (bchCode.degree(sigma) == roots.size()) {
-//            std::cout << "Decoded without chase iteration\n";
-//            for (int t : roots) {
-//                std::cout << "Errors: " << bchCode.GF.getLog(bchCode.GF.getInverse(t)) << ' ';
-//            }
             auto copy = signs;
             for(auto t : roots) {
                 copy[ bchCode.GF.getLog(bchCode.GF.getInverse(t))] ^= 1;
             }
             results.insert(copy);
-//            return results;
         }
 
 
@@ -339,7 +319,6 @@ struct chase_decoder {
         auto caph2 = mu(H.second);
 
         auto unreliable_positions = get_unreliable_positions(reliability, tau);
-//        std::vector<int> unreliable_positions{5};
 
         //Сюда идем, если не получилось продекодировать раньше. Т.е. нужно перед этим проверить правильность декодирования
         auto pair = get_decoding_tree(tau);
@@ -394,8 +373,6 @@ struct chase_decoder {
 
             }
         }
-
-        //TODO Сделать алгоритм из статьи
         return results;
     }
 
