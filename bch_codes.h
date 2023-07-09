@@ -11,6 +11,7 @@
 
 struct bch_code {
 public:
+    static constexpr int INF = 100000;
     galois_field GF;
     std::vector<int> generatingPolynomial;
     int n;

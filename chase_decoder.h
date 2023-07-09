@@ -12,6 +12,9 @@
 #include "random.h"
 #include<set>
 #include <bitset>
+#include <map>
+
+typedef std::pair<std::pair<std::vector<int>, std::vector<int>>, std::pair<std::vector<int>, std::vector<int>>> grobner_basis;
 
 struct chase_decoder {
 
@@ -115,16 +118,17 @@ struct chase_decoder {
 //    }
 
     int get_even(std::vector<int> &polynomial, int degree) {
-        return polynomial[degree * 2];
+        return bchCode.get(degree * 2, polynomial);
     }
 
     int get_odd(std::vector<int> &polynomial, int degree) {
-        return polynomial[degree * 2 + 1];
+//        return polynomial[degree * 2 + 1];
+        return bchCode.get(degree * 2 + 1, polynomial);
     }
 
 
-    std::vector<int> get_modified_syndrome(std::vector<int> &syndrome) {
-        int t = (bchCode.delta - 1) / 2;
+    std::vector<int> get_modified_syndrome(std::vector<int> &syndrome, int t) {
+//        int t = (bchCode.delta - 1) / 2;
         std::vector<int> a(t);
         a[0] = get_even(syndrome, 0);
         for (int i = 1; i < t; ++i) {
@@ -138,8 +142,8 @@ struct chase_decoder {
 
 
     std::pair<std::pair<std::vector<int>, std::vector<int>>, std::pair<std::vector<int>, std::vector<int>>>
-    fitzpatrick(std::vector<int> &syndrome) {
-        int t = (bchCode.delta - 1) / 2;
+    fitzpatrick(std::vector<int> &syndrome, int t) {
+//        int t = (bchCode.delta - 1) / 2;
         std::vector<std::vector<int>> b{{0},
                                         {1}};
         std::vector<int> alpha{1, -100};
@@ -147,7 +151,8 @@ struct chase_decoder {
         int j = 1;
         int d = 1;
         for (int k = 0; k < t; ++k) {
-            alpha[j] = bchCode.multiply_polynomial(syndrome, b[j])[k];
+
+            alpha[j] = bch_code::get(k, bchCode.multiply_polynomial(syndrome, b[j]));
             if (alpha[i] != 0) {
                 int coeff = bchCode.GF.multiply_elements(alpha[1 ^ i], bchCode.GF.getInverse(alpha[i]));
                 b[i ^ 1] = bchCode.summing_polynomial(b[i ^ 1],
@@ -188,12 +193,11 @@ struct chase_decoder {
     }
 
 
-
     double wdeg(std::pair<std::vector<int>, std::vector<int>> &polynomial_pair, double w) {
         double deg_first = bchCode.degree(polynomial_pair.first);
         double deg_second = bchCode.degree(polynomial_pair.second);
-        bool is_zero_first = deg_first == 0 && (polynomial_pair.first.empty() || polynomial_pair.first[0] == 0);
-        bool is_zero_second = deg_second == 0 && (polynomial_pair.second.empty() || polynomial_pair.second[0] == 0);
+        bool is_zero_first = deg_first == bch_code::INF;
+        bool is_zero_second = deg_second == -bch_code::INF;
         if (is_zero_first && is_zero_second) {
             return 0;
         } else if (is_zero_first) {
@@ -201,7 +205,7 @@ struct chase_decoder {
         } else if (is_zero_second) {
             return deg_first;
         } else
-        return std::max(deg_first, deg_second + w);
+            return std::max(deg_first, deg_second + w);
     }
 
     std::pair<std::pair<std::vector<int>, std::vector<int>>, std::pair<std::vector<int>, std::vector<int>>>
@@ -215,18 +219,18 @@ struct chase_decoder {
         galois_field &GF = bchCode.GF;
         std::vector<int> delta(2, 0);
         int inverse = GF.getInverse(error_locator);
-        int hh1 = bchCode.evaluate(h1, GF.getInverse(error_locator));
-        int hh2 = bchCode.evaluate(h2, GF.getInverse(error_locator));
+        int hh1 = bchCode.evaluate(h1, inverse);
+        int hh2 = bchCode.evaluate(h2, inverse);
 
         int inverse_square = GF.getPower(error_locator, -2);
         if (hh1 != 0) {
             int coef = GF.multiply_elements(hh2, GF.getInverse(hh1));
             delta[0] = GF.sum_elements(bchCode.evaluate(G.first.first, inverse_square),
                                        GF.multiply_elements(coef, bchCode.evaluate(G.first.second,
-                                                                                                       inverse_square)));
+                                                                                   inverse_square)));
             delta[1] = GF.sum_elements(bchCode.evaluate(G.second.first, inverse_square),
                                        GF.multiply_elements(coef, bchCode.evaluate(G.second.second,
-                                                                                                       inverse_square)));
+                                                                                   inverse_square)));
         } else {
             delta[0] = bchCode.evaluate(G.first.second, inverse_square);
             delta[1] = bchCode.evaluate(G.second.second, inverse_square);
@@ -251,13 +255,14 @@ struct chase_decoder {
                 J = 1;
             }
         }
-        auto& G_J = (J == 0) ? G.first : G.second;
-        for(int j : A) {
-            auto& G_j = (j == 0) ? G.first : G.second;
+        auto &G_J = (J == 0) ? G.first : G.second;
+        for (int j: A) {
+            auto &G_j = (j == 0) ? G.first : G.second;
             if (j != J) {
                 int coef = GF.multiply_elements(delta[J], GF.getInverse(delta[j]));
                 Gnew[j].first = bchCode.summing_polynomial(bchCode.multiply_polynomial({coef}, G_j.first), G_J.first);
-                Gnew[j].second = bchCode.summing_polynomial(bchCode.multiply_polynomial({coef}, G_j.second), G_J.second);
+                Gnew[j].second = bchCode.summing_polynomial(bchCode.multiply_polynomial({coef}, G_j.second),
+                                                            G_J.second);
             } else {
                 Gnew[j].first = bchCode.multiply_polynomial({inverse_square, 1}, G_J.first);
                 Gnew[j].second = bchCode.multiply_polynomial({inverse_square, 1}, G_J.second);
@@ -266,20 +271,134 @@ struct chase_decoder {
         return {Gnew[0], Gnew[1]};
     }
 
-    std::vector<std::vector<int>> fast_chase_decoding_2(std::vector<double> &corrupted_word, int tau) {
+    void dfs(std::vector<int> &tree, std::vector<std::set<int>> &layers, int u, int tau, int depth) {
+//        layers.insert({depth, u});
+        layers[depth].insert(u);
+        for (int i = 0; i < (tau); ++i) {
+            if (((1 << i) & u) == 0 && tree[(1 << i) | u] == -1) {
+                tree[(1 << i) | u] = u;
+                dfs(tree, layers, (1 << i) | u, tau, depth + 1);
+            }
+        }
+    }
+
+
+    std::pair<std::vector<int>, std::vector<std::set<int>>> get_decoding_tree(int tau) {
+        std::vector<int> tree(1 << tau, -1);
+        std::vector<std::set<int>> layers(tau + 1, std::set<int>());
+
+
+        dfs(tree, layers, 0, tau, 0);
+        return {tree, layers};
+    }
+
+
+    std::set<std::vector<int>> fast_chase_decoding_2(std::vector<double> &corrupted_word, int tau) {
+        //Инициализация
         auto signs = get_signs(corrupted_word);
         auto reliability = get_reliability(corrupted_word);
-        std::vector<std::vector<int>> results;
+//        std::vector<int> signs{0, 0, 1, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 1, 0};
+        std::set<std::vector<int>> results;
 
-//        auto tree_layers = get_tree_layers(tau);
+        //Поиск синдрома и модифицированного синдрома. Нахождение базиса модифицированного модуля решений
+        int t = (bchCode.delta - 1) / 2;
+        auto syndrome = bchCode.get_syndrome_vector(signs);
+        auto modifiedSyndrome = get_modified_syndrome(syndrome, t);
+        auto H = fitzpatrick(modifiedSyndrome, t);
 
-        for (int tree_layer = 0; tree_layer < tau; ++tree_layer) {
+        //Проверка решения(если ошибок <= t)
+        int index = -1;
 
+        std::vector<int> sigma;
+        if (wdeg(H.first, -1) < wdeg(H.second, -1)) {
+            sigma = mu(H.first);
+        } else {
+            sigma = mu(H.second);
+        }
+        auto roots = bchCode.get_roots(sigma);
+        if (bchCode.degree(sigma) == roots.size()) {
+//            std::cout << "Decoded without chase iteration\n";
+//            for (int t : roots) {
+//                std::cout << "Errors: " << bchCode.GF.getLog(bchCode.GF.getInverse(t)) << ' ';
+//            }
+            auto copy = signs;
+            for(auto t : roots) {
+                copy[ bchCode.GF.getLog(bchCode.GF.getInverse(t))] ^= 1;
+            }
+            results.insert(copy);
+//            return results;
+        }
+
+
+
+
+
+
+        double w = 2 * bchCode.degree(H.second.second) - ((bchCode.delta - 1) / 2) - 0.5;
+        auto caph1 = mu(H.first);
+        auto caph2 = mu(H.second);
+
+        auto unreliable_positions = get_unreliable_positions(reliability, tau);
+//        std::vector<int> unreliable_positions{5};
+
+        //Сюда идем, если не получилось продекодировать раньше. Т.е. нужно перед этим проверить правильность декодирования
+        auto pair = get_decoding_tree(tau);
+        auto tree = pair.first;
+        auto layers = pair.second;
+        std::map<int, grobner_basis> previous_layer;
+        previous_layer[0] = {{{1}, {0}},
+                                    {{0}, {1}}};
+        for (int tree_layer = 1; tree_layer <= tau; ++tree_layer) {
+            for (auto next_node: layers[tree_layer]) {
+                int new_error_locator = bchCode.GF.getElement(unreliable_positions[(int) log2(next_node ^ tree[next_node])]);
+                auto chase_result = kotter_iteration(w, previous_layer[tree[next_node]], caph1, caph2, new_error_locator);
+                //Поиск ошибок и проверка условия декодирования
+                std::vector<int> g_0;
+                std::vector<int> g_1;
+                int m_w = -1;
+                if (wdeg(chase_result.first, w) < wdeg(chase_result.second, w)) {
+                    g_0 = chase_result.first.first;
+                    g_1 = chase_result.first.second;
+                    m_w = 0;
+                } else {
+                    g_0 = chase_result.second.first;
+                    g_1 = chase_result.second.second;
+                    m_w = 1;
+                }
+
+                auto gcd = (bchCode.degree(g_0) > bchCode.degree(g_1)) ? bchCode.gcd(g_0, g_1) : bchCode.gcd(g_1, g_0);
+                auto f_1 = bchCode.div(g_0, gcd);
+                auto f_2 = bchCode.div(g_1, gcd);
+                std::set<int> errors;
+                for (int i = 1; i < bchCode.GF.q; ++i) {
+                    int inverse = bchCode.GF.getInverse(i);
+                    int inverse_square = bchCode.GF.getPower(inverse, 2);
+                    int a = bchCode.evaluate(f_1, inverse_square);
+                    int b = bchCode.evaluate(f_2, inverse_square);
+                    int c = bchCode.evaluate(caph1, inverse);
+                    int d = bchCode.evaluate(caph2, inverse);
+                    if (bchCode.GF.multiply_elements(a, c) == bchCode.GF.multiply_elements(b, d)) {
+                        errors.insert(i);
+                    }
+                }
+
+                int delta = std::max(2 * bchCode.degree(f_1) + 2 * bchCode.degree(H.first.first) + 1, 2 * bchCode.degree(f_2) + 2 * bchCode.degree(H.second.second));
+
+                if (delta == errors.size()) {
+                    auto copy = signs;
+                    for(auto t : errors) {
+                        copy[bchCode.GF.getLog(t)] ^= 1;
+                    }
+                    results.insert(copy);
+                }
+
+            }
         }
 
         //TODO Сделать алгоритм из статьи
-
+        return results;
     }
+
 };
 
 #endif //BCH_CODES_CHASE_DECODER_H

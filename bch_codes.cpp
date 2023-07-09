@@ -145,25 +145,13 @@ std::vector<int> bch_code::mod(std::vector<int> a, std::vector<int> &b) const {
 }
 
 std::vector<int> bch_code::div(std::vector<int> a, std::vector<int> &b) const {
-//    while (a.size() >= b.size()) {
-//        std::vector<int> t = shiftLeft(b, a.size() - b.size());
-//        int coeff = GF.multiply_elements(a[a.size() - 1], GF.getInverse(t[t.size() - 1]));
-//        t = multiply_polynomial({coeff}, t);
-//        a = shrink(summing_polynomial(a, t));
-//    }
-//
-//    return a;
-//    int zero_index = 0;
-//    while (b[zero_index] != 0 && zero_index < b.size()) {
-//        zero_index++;
-//    }
 a = shrink(a);
 b = shrink(b);
 if (a.size() < b.size()) {
     return {0};
 }
     std::vector<int> result(a.size() - b.size() + 1, 0);
-    while(a.size()!= 0) {
+    while(!a.empty()) {
         auto t = shiftLeft(b, a.size() - b.size());
         int coeff = GF.multiply_elements(a[a.size() - 1], GF.getInverse(t[t.size() - 1]));
         result[a.size() - b.size()] = coeff;
@@ -175,15 +163,12 @@ if (a.size() < b.size()) {
 }
 
 int bch_code::degree(std::vector<int> &polynomial) const {
-    if (polynomial.empty()) {
-        return 0;
-    }
     for (int i = polynomial.size() - 1; i >= 0; --i) {
         if (polynomial[i] != 0) {
             return i;
         }
     }
-    return 0;
+    return -INF;
 
 }
 
@@ -191,7 +176,7 @@ std::vector<int> bch_code::gcd(std::vector<int> a, std::vector<int> b) const {
     a = shrink(a);
     b = shrink(b);
 
-    while (b.size() != 0) {
+    while (!b.empty()) {
         a = mod(a, b);
         std::swap(a, b);
     }
@@ -317,9 +302,7 @@ std::vector<int> bch_code::find_errors(std::vector<int> &corrupted_word) const {
     auto locators = decoder_berlekamp_massey(get_syndrome_vector(corrupted_word));
     auto roots = get_roots(locators);
     for (int &root: roots) {
-//        if (root != GF.q) {
         root = GF.getLog(GF.getInverse(root));
-//        }
     }
     std::sort(roots.begin(), roots.end());
     return roots;
