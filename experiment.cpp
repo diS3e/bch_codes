@@ -153,7 +153,7 @@ int main() {
 //    std::vector<int> strange_vector        {1, 0, 0, 1, 1, 1, 1, 0, 0, 1, 0, 1, 0, 1, 1};
 //
 //    auto errors = bchCode.find_errors(strange_vector);
-    std::cout << (compare_two_methods(15, 5, 6000, 1) ? "EQUAL" : "NOT EQUAL");
-//    collect_data_with_fast_chase(63, 21, 6000, 6);
+//    std::cout << (compare_two_methods(15, 5, 6000, 1) ? "EQUAL" : "NOT EQUAL");
+    collect_data_with_fast_chase(63, 11, 10000, 6);
 
 }

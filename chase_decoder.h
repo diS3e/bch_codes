@@ -49,53 +49,19 @@ struct chase_decoder {
     }
 
 
-    std::vector<int> get_unreliable_positions(std::vector<double> &reliability, int d) {
+
+    static std::vector<int> get_unreliable_positions(std::vector<double> &reliability, int d) {
+        std::vector<std::pair<double, int>> elements;
+        for (int i = 0; i < reliability.size(); ++i) {
+            elements.emplace_back(reliability[i], i);
+        }
+        auto comparator =
+                [](const std::pair<double, int> &a, const std::pair<double, int> &b) { return a.first < b.first; };
+        std::sort(elements.begin(), elements.end(), comparator);
         std::vector<int> result;
         result.reserve(d);
-        double statistic;
-
-        int l = 0;
-        int r = reliability.size() - 1;
-        while (true) {
-            double del;
-            int index_left, index_right;
-            if (l == r) {
-                statistic = reliability[l];
-                break;
-            } else {
-                std::swap(reliability[rnd.rnd(l, r)], reliability[r]);
-
-                del = reliability[r];
-                index_right = l - 1;
-                index_left = index_right;
-                for (int i = l; i < r + 1; ++i) {
-                    if (reliability[i] <= del) {
-                        std::swap(reliability[++index_right], reliability[i]);
-                        if (reliability[index_right] != del) {
-                            std::swap(reliability[++index_left], reliability[index_right]);
-                        }
-                    }
-
-                }
-            }
-            if (d - 1 <= index_left) {
-                r = index_left;
-            } else if (d - 1 > index_right) {
-                l = index_right + 1;
-            } else {
-                statistic = reliability[d - 1];
-                break;
-            }
-
-        }
-
-        for (int i = 0; i < reliability.size(); ++i) {
-            if (reliability[i] <= statistic) {
-                result.push_back(i);
-            }
-            if (result.size() == d) {
-                break;
-            }
+        for (int i = 0; i < d; ++i) {
+            result.push_back(elements[i].second);
         }
         return result;
     }
