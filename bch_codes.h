@@ -26,7 +26,9 @@ public:
 
     static galois_field build_galois_field(int _n);
 
-    static std::vector<int> shrink(const std::vector<int> &a);
+    static void shrink(std::vector<int> &a);
+
+    void scalar_mul_vector(int scalar, std::vector<int> &vector, std::vector<int> &result) const;
 
     static std::vector<int> shiftLeft(const std::vector<int> &a, std::size_t shift);
 

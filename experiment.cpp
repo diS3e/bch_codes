@@ -5,7 +5,7 @@
 #include <iostream>
 #include <iomanip>
 #include "chase_decoder.h"
-
+#include <set>
 struct random rnd;
 
 bool words_equals(std::vector<int> const &a, std::vector<int> const &b) {
@@ -105,13 +105,13 @@ bool compare_two_methods(int n, int delta, int precision, int tau) {
             std::vector<double> corrupt = chaseDecoder.get_corrupt(coded_word, pow(10.0, (Eb / 10)));
             auto signs = chase_decoder::get_signs(corrupt);
             auto reliab = chase_decoder::get_reliability(corrupt);
-            auto unrel = chase_decoder::get_unreliable_positions(reliab, tau);
+            auto unrel = chaseDecoder.get_unreliable_positions(reliab, tau);
             auto results_fast = chaseDecoder.fast_chase_decoding_2(corrupt, tau);
 
 
             auto results_default = chaseDecoder.chase_decoding_2(corrupt, tau);
 
-            if (results_fast.count(coded_word) == 0 &&
+            if (std::count(results_fast.begin(), results_fast.end(), coded_word) == 0&&
                 std::count(results_default.begin(), results_default.end(), coded_word) != 0) {
                 printVector("\nCoded word", coded_word);
                 printVector("Corrupted ", signs);
@@ -153,7 +153,7 @@ int main() {
 //    std::vector<int> strange_vector        {1, 0, 0, 1, 1, 1, 1, 0, 0, 1, 0, 1, 0, 1, 1};
 //
 //    auto errors = bchCode.find_errors(strange_vector);
-    std::cout << (compare_two_methods(15, 5, 1000, 1) ? "EQUAL" : "NOT EQUAL");
-
+    std::cout << (compare_two_methods(15, 5, 6000, 1) ? "EQUAL" : "NOT EQUAL");
+//    collect_data_with_fast_chase(63, 21, 6000, 6);
 
 }

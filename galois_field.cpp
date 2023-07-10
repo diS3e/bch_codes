@@ -44,7 +44,12 @@ inline void galois_field::check_containing_element(int a) const {
     if (a == 0 || b == 0) {
         return 0;
     }
-    return log_to_element[(element_to_log[a] + element_to_log[b]) % (q - 1)];
+    if (element_to_log[a] + element_to_log[b] >= q - 1) {
+        return log_to_element[element_to_log[a] + element_to_log[b] - (q - 1)];
+
+    } else {
+        return log_to_element[element_to_log[a] + element_to_log[b]];
+    }
 }
 
 [[nodiscard]] int galois_field::getLog(int element) const {
@@ -64,7 +69,11 @@ inline void galois_field::check_containing_element(int a) const {
 }
 
 [[nodiscard]] int galois_field::getInverse(int a) const {
-    return getElement(q - getLog(a) - 1);
+    if (a == 1) {
+        return 1;
+    }
+    return log_to_element[(q - element_to_log[a] - 1)];
+
 }
 
 [[nodiscard]] int galois_field::getPower(int base, int pow) const {
@@ -75,6 +84,6 @@ inline void galois_field::check_containing_element(int a) const {
             return 0;
         }
     } else {
-        return getElement(getLog(base) * pow);
+        return getElement(element_to_log[base] * pow);
     }
 }
