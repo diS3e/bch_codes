@@ -1,5 +1,6 @@
 #include <iostream>
 #include <fstream>
+#include <set>
 #include "chase_decoder.h"
 
 struct random rnd;
@@ -31,7 +32,34 @@ bool words_equals(std::vector<int> const &a, std::vector<int> const &b) {
 int main(int argc, char *argv[]) {
 
     if (argc == 1) {
-        std::cout << "No command line arguments\n";
+        std::cout << "Expected program options:\n"
+                     "1) Code length (n)\n"
+                     "2) Constructive distance (delta)\n"
+                     "3) Program mode:\n"
+
+                     "\t1. -f %input file% %output file% --encoding\n"
+                     "\tEncodes binary words from a %input file% and writes the result to the %output file%.\n"
+                     "\tExample: 15 5 -f input.txt output.txt --encoding\n\n"
+
+                     "\t2. -f %input file% %output file% --decoding\n"
+                     "\tDecodes binary words with HD Berlekamp-Massey decoder.\n"
+                     "\tExample: 15 5 -f input.txt output.txt --decoding\n\n"
+
+
+                     "\t3. -n %incorrect positions% %samples%\n"
+                     "\tCreate %samples% random codeword with %incorrect positions% mistakes in each word.\n"
+                     "\tTrying to decode it with HD Berlekamp-Massey decoder and print statistic.\n"
+                     "\tExample: 15 5 -n 2 1000\n\n"
+
+                     "\t4. -p %error probability% %samples%\n"
+                     "\tCreate %samples% random codeword. In each position, an error is made with probability %error probability%.\n"
+                     "\tTrying to decode it with HD Berlekamp-Massey decoder and print statistic.\n"
+                     "\tExample: 15 5 -p 0.2 1000\n\n"
+                     ""
+//                     "\t5. -c %\n"
+                     ;
+        return 0;
+
     }
 
     auto start_time = std::chrono::steady_clock::now();

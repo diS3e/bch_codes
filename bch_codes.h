@@ -9,6 +9,8 @@
 #include "galois_field.h"
 
 
+int get(int i, const std::vector<int> &v);
+
 struct bch_code {
 public:
     static constexpr int INF = 100000;
@@ -20,7 +22,6 @@ public:
 
     bch_code(int _n, int _delta);
 
-    static int get(int i, const std::vector<int> &v);
 
     static void invert_symbol(std::vector<int> &code, int index);
 
@@ -50,13 +51,10 @@ public:
     std::vector<int> gcd(std::vector<int> a, std::vector<int> b) const;
 
     std::vector<int> mod(std::vector<int> a, std::vector<int> &b) const;
+
     std::vector<int> div(std::vector<int> a, std::vector<int> &b) const;
 
-    [[nodiscard]] int evaluate_with_log_polynomial(const std::vector<int> &logs_polynomial, int a) const;
-
     [[nodiscard]] int evaluate(const std::vector<int> &polynomial, int a) const;
-
-
 
     [[nodiscard]] std::vector<int> get_syndrome_vector(const std::vector<int> &corrupted_word) const;
 

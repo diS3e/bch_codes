@@ -7,7 +7,7 @@
 #include <stdexcept>
 #include <iostream>
 
-int bch_code::get(int i, const std::vector<int> &v) {
+int get(int i, const std::vector<int> &v) {
     return (0 <= i && i < v.size()) ? v[i] : 0;
 }
 
@@ -169,7 +169,6 @@ std::vector<int> bch_code::mod(std::vector<int> a, std::vector<int> &b) const {
         std::vector<int> t = shiftLeft(b, a.size() - b.size());
         int coeff = GF.multiply_elements(a[a.size() - 1], GF.getInverse(t[t.size() - 1]));
         scalar_mul_vector(coeff, t, t);
-//        t = multiply_polynomial({coeff}, t);
         t = summing_polynomial(a, t);
         shrink(t);
         a = t;
@@ -199,6 +198,9 @@ std::vector<int> bch_code::div(std::vector<int> a, std::vector<int> &b) const {
 }
 
 int bch_code::degree(std::vector<int> &polynomial) const {
+    if (polynomial.empty()) {
+        return -INF;
+    }
     for (int i = polynomial.size() - 1; i >= 0; --i) {
         if (polynomial[i] != 0) {
             return i;
@@ -254,7 +256,6 @@ int bch_code::evaluate(const std::vector<int> &polynomial, int a) const {
 
 std::vector<int> bch_code::code_word(std::vector<int> &information_word) {
     auto shifted = shiftLeft(information_word, n - k);
-//    shrink(shifted);
     auto m = mod(shifted, generatingPolynomial);
     auto res = summing_polynomial(m, shifted);
     return res;

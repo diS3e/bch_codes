@@ -5,9 +5,6 @@
 #ifndef BCH_CODES_GALOIS_FIELD_H
 #define BCH_CODES_GALOIS_FIELD_H
 
-
-#include <vector>
-
 struct galois_field {
 
     int m;
