@@ -1,7 +1,3 @@
-//
-// Created by S3 on 25.05.2023.
-//
-
 #include <iostream>
 #include <iomanip>
 #include "chase_decoder.h"
@@ -105,19 +101,34 @@ bool compare_two_methods(int n, int delta, int precision, int tau) {
             auto information_word = rnd.get_random_word(bchCode.k);
             auto coded_word = bchCode.code_word(information_word);
             std::vector<double> corrupt = chaseDecoder.get_corrupt(coded_word, pow(10.0, (Eb / 10)));
+//std::vector<double> corrupt{0.666238, 0.440147, -0.246487, -0.187352, 1.8618, 1.34823, 0.790773, 0.0331272, -0.169725, -1.10385, -0.741989, 0.0566463, 1.91129, -0.48681, -0.954932};
+//            printVector("Test:", corrupt);
+
+//            std::cout << "Test" << ": [";
+//            for (int i = 0; i < corrupt.size(); ++i) {
+//                std::cout << corrupt[i] << ", ";
+//            }
+//            std::cout << "]\n";
+//
             auto signs = chase_decoder::get_signs(corrupt);
             auto reliab = chase_decoder::get_reliability(corrupt);
             auto unrel = chase_decoder::get_unreliable_positions(reliab, tau);
             auto results_fast = chaseDecoder.fast_chase_decoding_2(corrupt, tau);
-
+            std::cout << "Fast:" << results_fast.size() << std::endl;
 
             auto results_default = chaseDecoder.chase_decoding_2(corrupt, tau);
+            std::cout << "Default:" << results_default.size() << std::endl;
 
             if (std::count(results_fast.begin(), results_fast.end(), coded_word) == 0 &&
                 std::count(results_default.begin(), results_default.end(), coded_word) != 0) {
                 printVector("\nCoded word", coded_word);
                 printVector("Corrupted ", signs);
                 printVector("Unreliable", unrel);
+                std::cout << "Test" << ": [";
+                for (int i = 0; i < corrupt.size(); ++i) {
+                    std::cout << corrupt[i] << ", ";
+                }
+                std::cout << "]\n";
                 std::cout << "Fast result:\n";
                 for (auto &t: results_fast) {
                     printVector("", t);
@@ -125,7 +136,7 @@ bool compare_two_methods(int n, int delta, int precision, int tau) {
 
                 }
                 std::cout << "Default:\n";
-                for (std::vector<int> &t: results_default) {
+                for (auto &t: results_default) {
                     printVector("", t);
                     printVector("Syndrome", bchCode.get_syndrome_vector(t));
                 }
@@ -148,7 +159,7 @@ int main() {
 //
 //    std::cout << "Default results:\n";
 //    collect_data(63,11,10000, 6);
-//    std::cout << "\nRuntime = " << clock()/1000.0 << "\n";
+//    std::cout << "\nRuntime =  << clock()/1000.0 << "\n";
 
 
 //    std::vector<int> strange_correct_vector{1, 0, 0, 1, 0, 1, 1, 0, 0, 0, 0, 1, 0, 1, 0};

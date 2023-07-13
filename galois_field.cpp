@@ -1,7 +1,3 @@
-//
-// Created by S3 on 08.05.2023.
-//
-
 #include <cmath>
 #include <stdexcept>
 #include "galois_field.h"

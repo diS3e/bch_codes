@@ -1,7 +1,3 @@
-//
-// Created by S3 on 08.05.2023.
-//
-
 #ifndef BCH_CODES_GALOIS_FIELD_H
 #define BCH_CODES_GALOIS_FIELD_H
 
@@ -14,7 +10,6 @@ struct galois_field {
 
     explicit galois_field(int generating_polynomial);
 
-    void check_containing_element(int a) const;
 
 //Складывает элементы поля
     [[nodiscard]] int sum_elements(int a, int b) const;
@@ -33,6 +28,8 @@ struct galois_field {
 
 //Возвращает base^pow(0^0 = 1, 0^x = 0)
     [[nodiscard]] int getPower(int base, int pow) const;
+private:
+    void check_containing_element(int a) const;
 };
 
 #endif //BCH_CODES_GALOIS_FIELD_H

@@ -55,9 +55,11 @@ int main(int argc, char *argv[]) {
                      "\tCreate %samples% random codeword. In each position, an error is made with probability %error probability%.\n"
                      "\tTrying to decode it with HD Berlekamp-Massey decoder and print statistic.\n"
                      "\tExample: 15 5 -p 0.2 1000\n\n"
-                     ""
-//                     "\t5. -c %\n"
-                     ;
+
+                     "\t5. -c %signal-to-noise ratio% %unreliable positions% %samples%\n"
+                     "\tCreates %samples% vectors with %signal-to-noise ratio% SNR and "
+                     "\tdecodes with fast Chase algorithm in %unreliable positions% positions.\n"
+                     "\tExample: 15 5 -c 5.0 3 1000\n";
         return 0;
 
     }
@@ -109,7 +111,7 @@ int main(int argc, char *argv[]) {
                 while (set.count(x) != 0) {
                     x = rnd.rnd(0, n - 1);
                 }
-                bch_code::invert_symbol(corrupted_word, x);
+                corrupted_word[x] ^= 1;
                 set.insert(x);
             }
             auto fixed_word = bchCode.fix_errors(corrupted_word);
@@ -131,9 +133,9 @@ int main(int argc, char *argv[]) {
             auto coded_word = bchCode.code_word(information_word);
             auto corrupted_word(coded_word);
 
-            for (int j = 0; j < corrupted_word.size(); ++j) {
+            for (int &j: corrupted_word) {
                 if (rnd.uniform_real(rnd.rng) <= probability) {
-                    bch_code::invert_symbol(corrupted_word, j);
+                    j ^= 1;
                 }
             }
 
@@ -146,6 +148,32 @@ int main(int argc, char *argv[]) {
         std::cout << "Error probability:\t" << probability << std::endl;
         std::cout << "Total tests:\t\t" << iterations << std::endl;
         std::cout << "Incorrectly decoded:\t" << 1 - ((double) successfully_decoded / iterations) << std::endl;
+    } else if (mode == "-c") {
+//        bch_code bchCode(n, delta);
+        chase_decoder chaseDecoder(bchCode);
+        double SNR = std::stod(argv[4]);
+        int tau = std::stoi(argv[5]);
+        int samples = std::stoi(argv[6]);
+//        for (double Eb = -2.0; Eb < 6.0; Eb += 0.5) {
+        int correct = 0;
+//            double all = precision;
+        for (int tries = 0; tries < samples; tries++) {
+            auto information_word = rnd.get_random_word(bchCode.k);
+            auto coded_word = bchCode.code_word(information_word);
+            std::vector<double> corrupt = chaseDecoder.get_corrupt(coded_word, pow(10.0, (SNR / 10)));
+            auto results = chaseDecoder.fast_chase_decoding_2(corrupt, tau);
+            for (auto &t: results) {
+                if (words_equals(t, coded_word)) {
+                    correct++;
+                    break;
+                }
+            }
+        }
+        std::cout << "Signal-to-noise ratio:\t" << SNR << std::endl;
+        std::cout << "Total tests:\t\t" << samples << std::endl;
+        std::cout << "Incorrectly decoded:\t" << samples - correct << std::endl;
+//            std::cout << std::fixed << std::setprecision(6) << Eb << ";" << correct / all << '\n';
+//        }
     } else {
         std::cerr << "Unexpected mode token\n";
         return 0;
